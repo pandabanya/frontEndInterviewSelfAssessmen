@@ -85,3 +85,57 @@ axios.interceptors.response.use(
 
 
 
+## 完整时间线
+
+```javascript
+// ===== 时间 0ms =====
+console.log('页面：开始请求订单');
+const orders = await getOrderList();
+
+// 到调用接口那里
+// ===== 时间 10ms =====
+console.log('接口函数：调用 axios');
+return axios.get('/order/list');
+
+
+// ===== 时间 20ms =====
+console.log('axios：发起 HTTP 请求');
+
+// ===== 时间 100ms =====
+console.log('服务器：返回 401');
+
+// 此时到响应拦截器里面
+
+// ===== 时间 110ms =====
+console.log('拦截器：收到 401');
+console.log('拦截器：检查 isRefreshing = true（有人在刷新）');
+
+// 此时进入else
+console.log('拦截器：返回 Promise');
+return new Promise(resolve => {
+  console.log('拦截器：把 resolve 存到队列');
+  failedQueue.push({ resolve, config: error.config });
+})
+
+
+// 返回出去之后
+
+// ===== 时间 120ms =====
+console.log('axios.get()：拿到 Promise');
+console.log('getOrderList()：拿到 Promise');
+console.log('页面：await 等待 Promise');
+// 代码暂停在这里 ⏸️
+
+// ===== 时间 500ms（Token 刷新好了）===== 此时获取到最新的Token了
+console.log('Token 刷新完成');
+console.log('遍历队列，调用 resolve');
+failedQueue.forEach(item => {
+  item.resolve(axios(item.config)); // 调用 resolve
+});
+
+// 此时调用resolve
+// ===== 时间 510ms =====
+console.log('Promise 被 resolve');
+console.log('await 继续执行 ▶️');
+console.log('页面：拿到订单数据');
+```
